@@ -77,10 +77,22 @@ pub fn draw_sidebar(ui: &mut Ui, state: &mut ViewerState) {
                             .and_then(|f| f.to_str())
                             .unwrap_or("Unknown");
 
-                        let display_name = if filename.len() > 24 {
-                            let ext_len = filename.split('.').last().map(|s| s.len() + 1).unwrap_or(0);
-                            let end_start = filename.len().saturating_sub(6 + ext_len);
-                            format!("{}...{}", &filename[0..12], &filename[end_start..])
+                        let char_count = filename.chars().count();
+                        let display_name = if char_count > 24 {
+                            let has_dot = filename.contains('.');
+                            let ext = if has_dot {
+                                filename.split('.').last().unwrap_or("")
+                            } else {
+                                ""
+                            };
+                            let ext_char_count = ext.chars().count().min(5);
+                            let suffix_len = 6 + if ext_char_count > 0 { ext_char_count + 1 } else { 0 };
+                            let chars: Vec<char> = filename.chars().collect();
+                            
+                            let prefix: String = chars.iter().take(12).collect();
+                            let suffix: String = chars.iter().skip(char_count.saturating_sub(suffix_len)).collect();
+                            
+                            format!("{}...{}", prefix, suffix)
                         } else {
                             filename.to_string()
                         };

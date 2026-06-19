@@ -28,6 +28,7 @@ fn main() {
         .title("Zenthra — Image Viewer")
         .size(1200, 660)
         .decorations(false)
+        .load_font_data(include_bytes!("../../../assets/fonts/SymbolsNerdFont-Regular.ttf").to_vec())
         .with_ui(move |ui| {
             // Update slideshow progression
             if state.update_slideshow() {
