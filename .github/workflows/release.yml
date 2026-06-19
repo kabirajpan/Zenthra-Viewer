@@ -33,12 +33,14 @@ jobs:
             archive_name: zenthra-view-macos-universal.tar.gz
 
     steps:
+      # Checkout the main zenthra-v2 repository to resolve local relative path dependencies
       - name: Checkout Core Framework
         uses: actions/checkout@v4
         with:
           repository: kabirajpan/zenthra-v2
           path: zenthra
 
+      # Checkout the current Zenthra-Viewer repository nested in the expected relative structure
       - name: Checkout Viewer
         uses: actions/checkout@v4
         with:
@@ -86,19 +88,19 @@ jobs:
         if: matrix.platform.os-name == 'windows'
         run: |
           cd zenthra/apps/image_viewer/target/${{ matrix.platform.target }}/release
-          powershell Compress-Archive -Path ${{ matrix.platform.bin }} -DestinationPath ../../../../../${{ matrix.platform.archive_name }}
+          powershell Compress-Archive -Path ${{ matrix.platform.bin }} -DestinationPath "${{ github.workspace }}\${{ matrix.platform.archive_name }}"
 
       - name: Package Binary (Linux)
         if: matrix.platform.os-name == 'linux'
         run: |
           cd zenthra/apps/image_viewer/target/${{ matrix.platform.target }}/release
-          tar -czf ../../../../../${{ matrix.platform.archive_name }} ${{ matrix.platform.bin }}
+          tar -czf "${{ github.workspace }}/${{ matrix.platform.archive_name }}" ${{ matrix.platform.bin }}
 
       - name: Package Binary (macOS Universal)
         if: matrix.platform.os-name == 'macos-universal'
         run: |
           cd zenthra/apps/image_viewer/target
-          tar -czf ../../../../${{ matrix.platform.archive_name }} image-viewer
+          tar -czf "${{ github.workspace }}/${{ matrix.platform.archive_name }}" image-viewer
 
       - name: Upload Binaries to Release
         uses: softprops/action-gh-release@v2
