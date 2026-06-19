@@ -27,25 +27,18 @@ jobs:
             bin: image-viewer.exe
             archive_name: zenthra-view-windows-x86_64.zip
           - os: macos-latest
-            os-name: macos-arm64
+            os-name: macos-universal
             target: aarch64-apple-darwin
             bin: image-viewer
-            archive_name: zenthra-view-macos-arm64.tar.gz
-          - os: macos-13
-            os-name: macos-x86_64
-            target: x86_64-apple-darwin
-            bin: image-viewer
-            archive_name: zenthra-view-macos-x86_64.tar.gz
+            archive_name: zenthra-view-macos-universal.tar.gz
 
     steps:
-      # Checkout the main zenthra-v2 repository to resolve local relative path dependencies
       - name: Checkout Core Framework
         uses: actions/checkout@v4
         with:
           repository: kabirajpan/zenthra-v2
           path: zenthra
 
-      # Checkout the current Zenthra-Viewer repository nested in the expected relative structure
       - name: Checkout Viewer
         uses: actions/checkout@v4
         with:
@@ -62,10 +55,32 @@ jobs:
         with:
           targets: ${{ matrix.platform.target }}
 
-      - name: Build Standalone Binary
+      - name: Add Intel macOS target
+        if: matrix.platform.os-name == 'macos-universal'
+        run: rustup target add x86_64-apple-darwin
+
+      - name: Build Standalone Binary (Non-macOS)
+        if: matrix.platform.os-name != 'macos-universal'
         working-directory: zenthra/apps/image_viewer
         run: |
           cargo build --release --bin image-viewer --target ${{ matrix.platform.target }}
+
+      - name: Build Standalone Binaries (macOS Universal)
+        if: matrix.platform.os-name == 'macos-universal'
+        working-directory: zenthra/apps/image_viewer
+        run: |
+          cargo build --release --bin image-viewer --target aarch64-apple-darwin
+          cargo build --release --bin image-viewer --target x86_64-apple-darwin
+
+      - name: Create Universal macOS Binary
+        if: matrix.platform.os-name == 'macos-universal'
+        working-directory: zenthra/apps/image_viewer
+        run: |
+          lipo -create \
+            -output target/image-viewer \
+            target/aarch64-apple-darwin/release/image-viewer \
+            target/x86_64-apple-darwin/release/image-viewer
+          file target/image-viewer
 
       - name: Package Binary (Windows)
         if: matrix.platform.os-name == 'windows'
@@ -73,11 +88,17 @@ jobs:
           cd zenthra/apps/image_viewer/target/${{ matrix.platform.target }}/release
           powershell Compress-Archive -Path ${{ matrix.platform.bin }} -DestinationPath ../../../../../${{ matrix.platform.archive_name }}
 
-      - name: Package Binary (Linux / macOS)
-        if: matrix.platform.os-name != 'windows'
+      - name: Package Binary (Linux)
+        if: matrix.platform.os-name == 'linux'
         run: |
           cd zenthra/apps/image_viewer/target/${{ matrix.platform.target }}/release
           tar -czf ../../../../../${{ matrix.platform.archive_name }} ${{ matrix.platform.bin }}
+
+      - name: Package Binary (macOS Universal)
+        if: matrix.platform.os-name == 'macos-universal'
+        run: |
+          cd zenthra/apps/image_viewer/target
+          tar -czf ../../../../${{ matrix.platform.archive_name }} image-viewer
 
       - name: Upload Binaries to Release
         uses: softprops/action-gh-release@v2
